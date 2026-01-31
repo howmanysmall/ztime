@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -15,53 +16,96 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/alecthomas/kong"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Metrics holds the timing and resource usage data.
 type Metrics struct {
-	Command      string
-	UserTime     time.Duration
-	SystemTime   time.Duration
-	ElapsedTime  time.Duration
-	CPUPercent   int
-	MaxRSS       int64 // in KB
-	SharedRSS    int64 // in KB
-	UnsharedRSS  int64 // in KB
-	UnsharedData int64 // in KB
-	UnsharedStk  int64 // in KB
-	PageFaults   int64 // Major
-	PageReclaims int64 // Minor
-	Swaps        int64
-	BlockInput   int64
-	BlockOutput  int64
-	MsgsSent     int64
-	MsgsRecv     int64
-	Signals      int64
-	VCtxSwitches int64
-	ICtxSwitches int64
+	Command      string        `json:"command"`
+	UserTime     time.Duration `json:"user_time"`
+	SystemTime   time.Duration `json:"system_time"`
+	ElapsedTime  time.Duration `json:"elapsed_time"`
+	CPUPercent   int           `json:"cpu_percent"`
+	MaxRSS       int64         `json:"max_rss"`       // in KB
+	SharedRSS    int64         `json:"shared_rss"`    // in KB
+	UnsharedRSS  int64         `json:"unshared_rss"`  // in KB
+	UnsharedData int64         `json:"unshared_data"` // in KB
+	UnsharedStk  int64         `json:"unshared_stk"`  // in KB
+	PageFaults   int64         `json:"page_faults"`   // Major
+	PageReclaims int64         `json:"page_reclaims"` // Minor
+	Swaps        int64         `json:"swaps"`
+	BlockInput   int64         `json:"block_input"`
+	BlockOutput  int64         `json:"block_output"`
+	MsgsSent     int64         `json:"msgs_sent"`
+	MsgsRecv     int64         `json:"msgs_recv"`
+	Signals      int64         `json:"signals"`
+	VCtxSwitches int64         `json:"v_ctx_switches"`
+	ICtxSwitches int64         `json:"i_ctx_switches"`
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		// Mimic zsh time with no args (which usually prints shell stats, but here just usage/zero)
-		// But strictly, we should probably just print usage.
-		fmt.Fprintln(os.Stderr, "usage: ztime <command> [arguments...]")
+	var cli struct {
+		JSON    bool     `help:"Output metrics in JSON format."`
+		Quiet   bool     `short:"q" help:"Suppress the summary output."`
+		Command []string `arg:"" help:"Command to execute." passthrough:""`
+	}
+
+	kctx := kong.Parse(&cli,
+		kong.Name("ztime"),
+		kong.Description("A shell-independent command timer replacement for 'zsh time'."),
+		kong.UsageOnError(),
+	)
+
+	if len(cli.Command) == 0 {
+		_ = kctx.PrintUsage(false)
+
 		os.Exit(0)
 	}
 
+	metrics, err := runCommand(cli.Command)
+
+	// 5. Output
+	if !cli.Quiet {
+		if cli.JSON {
+			data, _ := json.MarshalIndent(metrics, "", "  ")
+
+			fmt.Fprintln(os.Stderr, string(data))
+		} else {
+			printSummary(metrics)
+		}
+	}
+
+	// 6. Exit Code
+	if err == nil {
+		os.Exit(0)
+	}
+
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		if status, ok := exitErr.Sys().(syscall.WaitStatus); ok && status.Signaled() {
+			os.Exit(128 + int(status.Signal()))
+		}
+
+		os.Exit(exitErr.ExitCode())
+	}
+
+	fmt.Fprintf(os.Stderr, "ztime: %v\n", err)
+
+	os.Exit(127)
+}
+
+func runCommand(args []string) (Metrics, error) {
 	// 1. Setup Command
-	cmdArgs := os.Args[1:]
 	//nolint:gosec // Intended behavior: ztime runs arbitrary commands.
-	cmd := exec.CommandContext(context.Background(), cmdArgs[0], cmdArgs[1:]...)
+	cmd := exec.CommandContext(context.Background(), args[0], args[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	// 2. Signal Handling
-	// Forward signals to the child process.
 	sigChan := make(chan os.Signal, 1)
-	// Notify for common signals we want to forward.
-	// We avoid catching everything (like SIGCHLD, SIGURG, etc.) to avoid noise.
 	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
 	go func() {
@@ -81,39 +125,36 @@ func main() {
 	close(sigChan)
 
 	// 4. Metrics Extraction
-	metrics := extractMetrics(cmd, start, end, cmdArgs)
+	return extractMetrics(cmd, start, end, args), err
+}
 
-	// 5. Formatting
+func printSummary(m Metrics) {
 	timeFmt := os.Getenv("TIMEFMT")
-	if timeFmt == "" {
-		// Default zsh format
-		timeFmt = "%J  %U user %S system %P cpu %*E total"
+	if timeFmt != "" {
+		fmt.Fprintln(os.Stderr, format(timeFmt, m))
+		return
 	}
 
-	fmt.Fprintln(os.Stderr, format(timeFmt, metrics))
+	// Default styled output using lipgloss
+	bold := lipgloss.NewStyle().Bold(true)
+	faint := lipgloss.NewStyle().Faint(true)
+	blue := lipgloss.NewStyle().Foreground(lipgloss.Color("33"))
+	green := lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
 
-	// 6. Exit Code
-	if err == nil {
-		os.Exit(0)
-	}
+	var summary strings.Builder
+	summary.WriteString(fmt.Sprintf("%s  %s user %s system %s cpu %s total\n",
+		faint.Render(m.Command),
+		blue.Render(fmt.Sprintf("%.2fs", m.UserTime.Seconds())),
+		blue.Render(fmt.Sprintf("%.2fs", m.SystemTime.Seconds())),
+		green.Render(fmt.Sprintf("%d%%", m.CPUPercent)),
+		bold.Render(fmt.Sprintf("%.3fs", m.ElapsedTime.Seconds())),
+	))
 
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		if status, ok := exitErr.Sys().(syscall.WaitStatus); ok && status.Signaled() {
-			os.Exit(128 + int(status.Signal()))
-		}
-
-		os.Exit(exitErr.ExitCode())
-	}
-
-	// Some other error starting the command
-	fmt.Fprintf(os.Stderr, "ztime: %v\n", err)
-	os.Exit(127) // Command not found or similar
+	fmt.Fprint(os.Stderr, summary.String())
 }
 
 func extractMetrics(cmd *exec.Cmd, start, end time.Time, args []string) Metrics {
 	elapsed := end.Sub(start)
-
 	m := Metrics{
 		Command:     strings.Join(args, " "),
 		ElapsedTime: elapsed,
@@ -122,12 +163,9 @@ func extractMetrics(cmd *exec.Cmd, start, end time.Time, args []string) Metrics 
 	if cmd.ProcessState != nil {
 		m.UserTime = cmd.ProcessState.UserTime()
 		m.SystemTime = cmd.ProcessState.SystemTime()
-
-		// CPU Percentage
 		m.CPUPercent = calculateCPUPercent(m.UserTime, m.SystemTime, elapsed)
 
 		if usage, ok := cmd.ProcessState.SysUsage().(*syscall.Rusage); ok {
-			// Darwin/Linux Rusage fields often use int64 or int32 depending on arch.
 			m.MaxRSS = usage.Maxrss
 			m.SharedRSS = usage.Ixrss
 			m.UnsharedData = usage.Idrss
@@ -159,6 +197,7 @@ func format(tmpl string, m Metrics) string {
 
 		if inPercent {
 			handled := handleSpecifier(&out, char, m, &i, tmpl)
+
 			if !handled {
 				out.WriteByte('%')
 				out.WriteByte(char)
@@ -174,7 +213,6 @@ func format(tmpl string, m Metrics) string {
 		}
 	}
 
-	// Dangle %
 	if inPercent {
 		out.WriteByte('%')
 	}
@@ -243,10 +281,8 @@ func handleIntSpecifier(out *bytes.Buffer, char byte, m Metrics) bool {
 }
 
 func handleStar(out *bytes.Buffer, m Metrics, idx *int, tmpl string) {
-	// Handle %*E
 	if *idx+1 < len(tmpl) && tmpl[*idx+1] == 'E' {
 		*idx++
-		// Format as mm:ss.SS or h:mm:ss
 		d := m.ElapsedTime
 		hours := int(d.Hours())
 		mins := int(d.Minutes()) % 60
@@ -258,7 +294,6 @@ func handleStar(out *bytes.Buffer, m Metrics, idx *int, tmpl string) {
 			fmt.Fprintf(out, "%d:%05.2f", mins, secs)
 		}
 	} else {
-		// Unknown, just print *
 		out.WriteByte('*')
 	}
 }
