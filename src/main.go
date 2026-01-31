@@ -1,7 +1,11 @@
+// github.com/howmanysmall/ztime
+
 // Package main is the entry point.
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,11 +14,12 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr.Chdir().Error(), "usage: ztime <command> [arguments...]")
+		fmt.Fprintln(os.Stderr, "usage: ztime <command> [arguments...]")
 		os.Exit(2)
 	}
 
-	command := exec.Command(os.Args[1], os.Args[2:]...)
+	//nolint:gosec // Intended behavior: ztime runs arbitrary commands.
+	command := exec.CommandContext(context.Background(), os.Args[1], os.Args[2:]...)
 	command.Stdin = os.Stdin
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
@@ -44,7 +49,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	if exitError, ok := err.(*exec.ExitError); ok {
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
 		os.Exit(exitError.ExitCode())
 	}
 

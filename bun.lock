@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "npm-registry-mcp",
+      "name": "ztime",
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
       },
