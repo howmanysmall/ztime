@@ -106,7 +106,7 @@ func runCommand(args []string) (Metrics, error) {
 
 	// 2. Signal Handling
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+	signal.Notify(sigChan, signalList()...)
 
 	go func() {
 		for sig := range sigChan {
@@ -165,22 +165,7 @@ func extractMetrics(cmd *exec.Cmd, start, end time.Time, args []string) Metrics 
 		m.SystemTime = cmd.ProcessState.SystemTime()
 		m.CPUPercent = calculateCPUPercent(m.UserTime, m.SystemTime, elapsed)
 
-		if usage, ok := cmd.ProcessState.SysUsage().(*syscall.Rusage); ok {
-			m.MaxRSS = usage.Maxrss
-			m.SharedRSS = usage.Ixrss
-			m.UnsharedData = usage.Idrss
-			m.UnsharedStk = usage.Isrss
-			m.PageFaults = usage.Majflt
-			m.PageReclaims = usage.Minflt
-			m.Swaps = usage.Nswap
-			m.BlockInput = usage.Inblock
-			m.BlockOutput = usage.Oublock
-			m.MsgsSent = usage.Msgsnd
-			m.MsgsRecv = usage.Msgrcv
-			m.Signals = usage.Nsignals
-			m.VCtxSwitches = usage.Nvcsw
-			m.ICtxSwitches = usage.Nivcsw
-		}
+		populateUsage(&m, cmd.ProcessState)
 	}
 
 	return m
