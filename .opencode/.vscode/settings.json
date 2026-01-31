@@ -1,0 +1,113 @@
+{
+	"[css]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true,
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true,
+		"editor.quickSuggestions": { "strings": true },
+		"editor.suggest.insertMode": "replace",
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true,
+		"editor.quickSuggestions": { "strings": true },
+		"editor.suggest.insertMode": "replace",
+	},
+	"[snippets]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true,
+		"editor.quickSuggestions": { "strings": true },
+		"editor.suggest.insertMode": "replace",
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode",
+		"editor.formatOnSave": true,
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode",
+		"editor.formatOnSave": true,
+	},
+
+	"biome.configurationPath": "./biome.jsonc",
+	"biome.enabled": true,
+	"biome.requireConfiguration": true,
+	"biome.suggestInstallingGlobally": true,
+
+	"chat.commandCenter.enabled": false,
+	"chat.tools.edits.autoApprove": {
+		"**/.git/**": false,
+		"**/.vscode/*.json": false,
+		"**/{package.json,package-lock.json,server.xml,build.rs,web.config,.gitattributes,.env}": false,
+		"**/*": true,
+		"**/*.{code-workspace,csproj,fsproj,vbproj,vcxproj,proj,targets,props}": false,
+	},
+	"chat.tools.todos.showWidget": true,
+	"chat.useAgentSkills": true,
+
+	"editor.acceptSuggestionOnCommitCharacter": true,
+	"editor.acceptSuggestionOnEnter": "on",
+	"editor.codeActionsOnSave": {
+		"source.addMissingImports.ts": "never",
+		"source.biome": "explicit",
+		"source.fixAll.biome": "explicit",
+		"source.fixAll.oxc": "explicit",
+		"source.organizeImports": "never",
+		"source.organizeImports.biome": "never",
+		"source.removeUnusedImports": "explicit",
+	},
+	"editor.defaultFormatter": "biomejs.biome",
+	"editor.formatOnSave": true,
+	"editor.formatOnSaveMode": "file",
+	"editor.quickSuggestions": {
+		"comments": "on",
+		"other": "on",
+		"strings": "on",
+	},
+
+	"files.associations": {
+		".oxfmtrc.json": "jsonc",
+		".oxlintrc.json": "jsonc",
+		".zed/settings.json": "jsonc",
+		"*.code-workspace": "jsonc",
+		"tsconfig*.json": "jsonc",
+	},
+	"files.defaultLanguage": "typescript",
+
+	"git.openRepositoryInParentFolders": "always",
+
+	"github.copilot.chat.commitMessageGeneration.instructions": [
+		{
+			"text": "Strictly follow Conventional Commits: `<type>(<scope>): <subject>`. Types: feat, fix, refactor, docs, style, test, chore, perf, build, ci, revert. Scopes: benchmarks, classes, commands, components, constants, contexts, functions, hooks, logging, meta, prompts, providers, types, utilities, validators, deps, release, repo. Rules: Use imperative mood, lowercase subject start, no trailing period, and 72 char limit.",
+		},
+	],
+
+	"material-icon-theme.activeIconPack": "react",
+	"material-icon-theme.files.customClones": [],
+	"material-icon-theme.folders.associations": {
+		// "sub-commands": "command",
+	},
+	"material-icon-theme.folders.customClones": [
+		// https://github.com/material-extensions/vscode-material-icon-theme/blob/main/src/core/generator/clones/utils/color/materialPalette.ts
+		{
+			"base": "command",
+			"color": "deep-purple-400",
+			"folderNames": ["sub-commands"],
+			"lightColor": "deep-purple-600",
+			"name": "sub-command",
+		},
+	],
+
+	"npm.packageManager": "bun",
+	"npm.scriptRunner": "bun",
+
+	"oxc.enable": true,
+	"oxc.fixKind": "safe_fix",
+	"oxc.lint.run": "onType",
+	"oxc.typeAware": true,
+	"oxc.unusedDisableDirectives": "deny",
+
+	"typescript.experimental.useTsgo": true,
+	"typescript.preferences.autoImportSpecifierExcludeRegexes": ["^(node:)?os$"],
+}

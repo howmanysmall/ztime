@@ -1,0 +1,38 @@
+{
+	"mcpServers": {
+		"context7": {
+			"headers": {
+				"Accept": "application/json, text/event-stream",
+				"CONTEXT7_API_KEY": "$CONTEXT7_API_KEY"
+			},
+			"httpUrl": "https://mcp.context7.com/mcp"
+		},
+		"gh-grep": {
+			"excludeTools": [],
+			"url": "https://mcp.grep.app"
+		},
+		"package-registry": {
+			"args": ["x", "--bun", "package-registry-mcp"],
+			"command": "bun",
+			"description": "Provides packages.",
+			"excludeTools": [
+				"get-cargo-package-details",
+				"get-github-advisory",
+				"get-npm-package-details",
+				"get-nuget-package-details",
+				"get-package-advisories",
+				"get-pypi-package-details",
+				"list-cargo-package-versions",
+				"list-npm-package-versions",
+				"list-nuget-package-versions",
+				"list-pypi-package-versions",
+				"search-cargo-packages",
+				"search-github-advisories",
+				"search-npm-packages",
+				"search-nuget-packages"
+			],
+			"type": "stdio"
+		}
+	},
+	"model": {}
+}
