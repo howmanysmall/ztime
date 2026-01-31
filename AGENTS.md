@@ -21,7 +21,8 @@ Use Go 1.25.x when possible (CI uses 1.25).
 ### Build
 
 ```bash
-go build -v ./...
+mkdir -p /tmp/ztime-build
+go build -v -o /tmp/ztime-build ./...
 go build -o ztime ./src
 ```
 
